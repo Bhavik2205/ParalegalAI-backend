@@ -206,3 +206,41 @@ curl -X POST http://127.0.0.1:5000/query \
 
 
 Expect: legal answer + "note": "Ignoring unrelated non-legal parts."
+
+
+
+
+
+
+paralegal-backend/
+│── app.py
+│── config.py
+│── requirements.txt
+│── README.md
+│
+├── core/
+│   ├── router.py
+│   ├── memory.py
+│   ├── openrouter_client.py
+│   ├── document_parser.py
+│   └── langgraph_manager.py
+|
+│
+├── agents/
+│   ├── __init__.py
+│   ├── classifier_agent.py
+│   ├── insights_agent.py
+│   ├── draft_agent.py
+│   ├── update_agent.py
+│   ├── review_agent.py
+│   ├── compare_agent.py
+│   ├── summarize_agent.py
+│   ├── greeting_agent.py
+│   └── unclear_agent.py
+│
+├── data/
+│   ├── memory_store.db
+│   └── vector_index/
+│
+└── logs/
+    └── app.log
