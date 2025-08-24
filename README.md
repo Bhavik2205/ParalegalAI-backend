@@ -244,3 +244,15 @@ paralegal-backend/
 │
 └── logs/
     └── app.log
+
+
+flowchart TD
+  A[User Input/Upload] --> B{Classifier Agent}
+  B -->|Intent = Draft| C[Draft Agent]
+  B -->|Intent = Review| D[Review Agent]
+  B -->|Intent = Compare| E[Compare Agent]
+  B -->|Unclear| F[Unclear Agent]
+
+  B --> G{Case Relevance?}
+  G -->|Same| H[Continue Current Case]
+  G -->|New| I[Ask to Create New Case Session]
