@@ -1,38 +1,40 @@
-from agents.classifier_agent import classify_intent
-from agents.insights_agent import run as insights_agent
-from agents.summarize_agent import run as summarize_agent
-from agents.compare_agent import run as compare_agent
-from agents.greeting_agent import run as greeting_agent
-from agents.unclear_agent import run as unclear_agent
+# router.py (Flask)
+from flask import Flask, request, jsonify
+import uuid
+from langgraph_manager import process_user_input, create_session, update_session
+from file_handler import handle_file_upload
 
-def route_query(session_id, user_input):
-    classification = classify_intent(user_input)
+app = Flask(__name__)
 
-    response = {
-        "session_id": session_id,
-        "intent": classification,
-        "note": None,
-        "output": None
-    }
+@app.route("/query", methods=["POST"])
+def query():
+    user_input = request.form.get("user_input")
+    session_id = request.form.get("session_id")
+    file = request.files.get("file")
 
-    if not classification.get("legal_related", False):
-        response["output"] = "I can only assist with legal topics."
-        return response
+    # If no session_id, create new one
+    if not session_id:
+        session_id = create_session()
 
-    if classification.get("unrelated_detected", False):
-        response["note"] = "Ignoring unrelated non-legal parts."
+    combined_text = user_input or ""
 
-    primary_intent = classification.get("primary_intent", "unclear")
+    # If file uploaded, handle file extraction
+    if file:
+        file_result = handle_file_upload(file=file, session_id=session_id, filename=file.filename)
 
-    if primary_intent == "insights":
-        response["output"] = insights_agent(user_input)
-    elif primary_intent == "summarize":
-        response["output"] = summarize_agent(user_input)
-    elif primary_intent == "compare":
-        response["output"] = compare_agent(user_input)
-    elif primary_intent == "greeting":
-        response["output"] = greeting_agent(user_input)
-    else:
-        response["output"] = unclear_agent(user_input)
+        # Update session with file metadata
+        update_session(session_id, "uploaded_file", file_result)
 
-    return response
+        if file_result.get("extracted_text"):
+            combined_text += "\n\n[File Content]:\n" + file_result["extracted_text"]
+
+    # If no text and no file → error
+    if not combined_text.strip():
+        return jsonify({"error": "No input provided"}), 400
+
+    # Process via LangGraph Manager
+    response_data = process_user_input(combined_text, session_id=session_id)
+    return jsonify(response_data)
+
+if __name__ == "__main__":
+    app.run(debug=True)

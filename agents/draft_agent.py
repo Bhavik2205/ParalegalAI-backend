@@ -3,14 +3,15 @@
 """
 Draft Agent
 -----------
-This agent is responsible for creating new legal documents 
-based on user instructions. It ensures structure, clarity, 
-and professional legal formatting. 
+Responsible for creating legal documents based on user instructions.
+Ensures structure, clarity, and professional legal formatting.
 """
 
 from typing import Optional, Dict
+from core.openrouter_client import generate_response
 
 
+# Template Library
 TEMPLATE_LIBRARY = {
     "nda": """
 NON-DISCLOSURE AGREEMENT (NDA)
@@ -67,13 +68,6 @@ _______________________          _______________________
 def generate_document(doc_type: str, context: Dict[str, str]) -> str:
     """
     Generates a legal draft based on doc_type and provided context.
-
-    Args:
-        doc_type (str): The type of document (e.g., "nda", "contract").
-        context (dict): Key-value pairs to fill placeholders.
-
-    Returns:
-        str: Drafted legal document.
     """
     template = TEMPLATE_LIBRARY.get(doc_type.lower())
     if not template:
@@ -85,29 +79,36 @@ def generate_document(doc_type: str, context: Dict[str, str]) -> str:
         missing_field = str(e).strip("'")
         return f"⚠️ Missing required field: {missing_field}. Please provide it."
 
+def extract_doc_type(user_input: str) -> Optional[str]:
+    """
+    Extracts the type of legal document from user input.
+    """
+    user_input = user_input.lower()
+    if "nda" in user_input:
+        return "nda"
+    elif "contract" in user_input:
+        return "contract"
+    return None
+
 
 def run(user_input: str, session_ctx: Optional[Dict] = None) -> str:
     """
     Handles user request for drafting a new legal document.
-
-    Args:
-        user_input (str): The user’s drafting request.
-        session_ctx (dict, optional): Session context for continuity.
-
-    Returns:
-        str: Drafted legal document or clarification message.
     """
-    # Very basic keyword detection for doc type
-    if "nda" in user_input.lower():
-        return generate_document("nda", {
+    doc_type = extract_doc_type(user_input)
+
+    if not doc_type:
+        return "⚠️ Please specify the type of legal document you want me to draft (e.g., NDA, contract)."
+
+    # Default placeholders for required fields
+    default_context = {
+        "nda": {
             "date": "____",
             "party_a": "____",
             "party_b": "____",
-            "term": "___"
-        })
-
-    elif "contract" in user_input.lower():
-        return generate_document("contract", {
+            "term": "____"
+        },
+        "contract": {
             "date": "____",
             "party_a": "____",
             "party_b": "____",
@@ -116,7 +117,21 @@ def run(user_input: str, session_ctx: Optional[Dict] = None) -> str:
             "start_date": "____",
             "end_date": "____",
             "jurisdiction": "____"
-        })
+        }
+    }
 
-    else:
-        return "⚠️ Please specify the type of legal document you want me to draft (e.g., NDA, contract)."
+    # Use existing session context if provided
+    context = session_ctx or default_context[doc_type]
+
+    draft = generate_document(doc_type, context)
+
+    # If missing fields, generate a helpful AI response asking user
+    if "⚠️ Missing required field" in draft:
+        missing_field = draft.split(":")[-1].strip(". Please provide it.")
+        ai_message = generate_response([
+            {"role": "system", "content": "You are a legal assistant helping fill missing fields."},
+            {"role": "user", "content": f"The user needs to provide the missing field '{missing_field}' for the {doc_type}."}
+        ])
+        return draft + "\n\n" + ai_message
+
+    return draft

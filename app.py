@@ -1,12 +1,3 @@
-# from agents import classify_intent
-
-# if __name__ == "__main__":
-#     query = " can you write simple c++ hello world. GDPR vs CCPA regulations for small businesses."
-#     result = classify_intent(query)
-#     print(result)
-#     # Expected: {"primary_intent": "compare", "secondary_intent": "insights"}
-
-
 from flask import Flask, request, jsonify
 from core.router import route_query
 import uuid
